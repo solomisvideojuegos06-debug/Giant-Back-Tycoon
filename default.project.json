@@ -1,0 +1,37 @@
+{
+	"name": "giant-back-tycoon",
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": {
+			"Shared": {
+				"$path": "src/shared"
+			},
+			"Assets": {
+				"$className": "Folder",
+				"$path": "assets"
+			},
+			"Packages": {
+				"$path": {
+					"optional": "Packages"
+				}
+			}
+		},
+		"ServerScriptService": {
+			"Server": {
+				"$path": "src/server"
+			},
+			"ServerPackages": {
+				"$path": {
+					"optional": "ServerPackages"
+				}
+			}
+		},
+		"StarterPlayer": {
+			"StarterPlayerScripts": {
+				"Client": {
+					"$path": "src/client"
+				}
+			}
+		}
+	}
+}

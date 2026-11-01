@@ -1,0 +1,16 @@
+# Paquetes de Wally (se regeneran con `wally install`)
+/Packages/
+/ServerPackages/
+/DevPackages/
+
+# Archivos de Roblox Studio y Rojo
+*.rbxl
+*.rbxlx
+*.rbxl.lock
+*.rbxlx.lock
+sourcemap.json
+
+# Selene genera aquí la librería estándar de Roblox
+roblox.yml
+
+.DS_Store
