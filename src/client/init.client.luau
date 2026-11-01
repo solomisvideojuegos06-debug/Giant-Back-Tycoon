@@ -3,6 +3,12 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+-- Espera a la réplica inicial para que los controllers puedan usar
+-- ReplicatedStorage.Shared directamente.
+if not game:IsLoaded() then
+	game.Loaded:Wait()
+end
+
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 
 require(Shared:WaitForChild("Remotes"))

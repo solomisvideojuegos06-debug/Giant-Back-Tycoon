@@ -48,4 +48,4 @@ assets                  → ReplicatedStorage.Assets              (modelos .rbxm
 | Hito | Estado |
 | --- | --- |
 | M0. Proyecto base | Comprobado en Studio |
-| M1. El gigante que camina | — |
+| M1. El gigante que camina | Hecho, pendiente de comprobar en Studio |

@@ -14,3 +14,6 @@ sourcemap.json
 roblox.yml
 
 .DS_Store
+
+# Archivos que se entregan al usuario (se generan con rojo build)
+/dist/

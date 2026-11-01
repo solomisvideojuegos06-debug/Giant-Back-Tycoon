@@ -74,7 +74,15 @@ local Remotes = {
 	ContinueWithHatchling = func("ContinueWithHatchling"), -- confirmar retiro
 	BoardGiant = func("BoardGiant"), -- subir como pasajero
 
+	-- Cliente → servidor → otros clientes (no está en el GDD; ver docs/decisiones/M1-plataforma.md)
+	-- Posición del personaje relativa al gigante que pisa, para dibujar bien
+	-- a los demás jugadores sobre su gigante.
+	RiderUpdate = unreliable("RiderUpdate"),
+
 	-- Servidor → cliente(s)
+	-- Instantáneas con hora del servidor para interpolar los gigantes
+	-- (no está en el GDD; ver docs/decisiones/M1-plataforma.md).
+	GiantSnapshot = unreliable("GiantSnapshot"),
 	StateUpdate = event("StateUpdate"), -- solo lo que cambia
 	Stomp = unreliable("Stomp"), -- gigante, posición, recursos recogidos
 	GrowthSpurt = event("GrowthSpurt"), -- efectos visuales del estirón
