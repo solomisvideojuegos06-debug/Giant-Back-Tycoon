@@ -3,6 +3,8 @@
 
 local suites = {
 	require("@self/GiantMath.spec"),
+	require("@self/Formulas.spec"),
+	require("@self/Inheritance.spec"),
 }
 
 local passed, failed = 0, 0

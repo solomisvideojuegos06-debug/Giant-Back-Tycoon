@@ -3,7 +3,8 @@
 	Bootstrap
 	Arranque común de services (servidor) y controllers (cliente).
 
-	1. Carga todos los ModuleScript de una carpeta, en orden alfabético.
+	1. Carga todos los ModuleScript de una carpeta, ordenados por `priority`
+	   (opcional, menor primero; por defecto 10) y después por nombre.
 	2. Comprueba que cada uno expone init() y start().
 	3. Llama a init() en todos (secuencial; si uno falla, se aborta el arranque).
 	4. Llama a start() en todos, cada uno en su propio hilo para que un start()
@@ -16,13 +17,15 @@ type Lifecycle = Types.Lifecycle
 
 local Bootstrap = {}
 
+local DEFAULT_PRIORITY = 10
+
 local function loadModules(folder: Instance): { { name: string, module: Lifecycle } }
 	local children = folder:GetChildren()
 	table.sort(children, function(a, b)
 		return a.Name < b.Name
 	end)
 
-	local loaded = {}
+	local loaded: { { name: string, module: Lifecycle } } = {}
 	for _, child in children do
 		if child:IsA("ModuleScript") then
 			local module = require(child) :: any
@@ -32,6 +35,15 @@ local function loadModules(folder: Instance): { { name: string, module: Lifecycl
 			table.insert(loaded, { name = child.Name, module = module :: Lifecycle })
 		end
 	end
+	-- Orden estable: prioridad (menor primero) y después nombre.
+	table.sort(loaded, function(a, b)
+		local pa = a.module.priority or DEFAULT_PRIORITY
+		local pb = b.module.priority or DEFAULT_PRIORITY
+		if pa ~= pb then
+			return pa < pb
+		end
+		return a.name < b.name
+	end)
 	return loaded
 end
 

@@ -243,7 +243,47 @@ local function onRiderUpdate(userId: number, giantUserId: number, offset: Vector
 	end
 end
 
+-- Teletransporta al jugador a la cubierta de un gigante (pasajero).
+local function boardOnto(giant: Giant)
+	local part = rootPart
+	if not part then
+		return
+	end
+	standUp()
+	part.CFrame = GiantRenderController.getDeckCFrame(giant) * CFrame.new(0, 3, 0)
+	part.AssemblyLinearVelocity = Vector3.zero
+	attachedTo = giant.userId
+end
+
+local function attachBoardPrompt(giant: Giant)
+	local deck = giant.built.model:FindFirstChild("Deck")
+	if not deck or not deck:IsA("BasePart") then
+		return
+	end
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.ActionText = "Subir (+20 %)"
+	prompt.ObjectText = "Pasajero"
+	prompt.KeyboardKeyCode = Enum.KeyCode.F
+	prompt.RequiresLineOfSight = false
+	prompt.HoldDuration = 0.3
+	prompt.MaxActivationDistance = GiantConfig.prompt.boardDistance * giant.scale
+	prompt.Parent = deck
+	prompt.Triggered:Connect(function()
+		local ok, result = pcall(function()
+			return Remotes.BoardGiant:InvokeServer(giant.userId)
+		end)
+		local current = GiantRenderController.getGiant(giant.userId)
+		if ok and result == true and current then
+			boardOnto(current)
+		end
+	end)
+end
+
 local function attachPrompt(giant: Giant)
+	if giant.userId > 0 and giant.userId ~= player.UserId then
+		attachBoardPrompt(giant)
+		return
+	end
 	if giant.userId ~= player.UserId then
 		return
 	end
@@ -300,6 +340,22 @@ local function onCharacterRemoving(oldCharacter: Model)
 		attachedTo = nil
 		updatePrompt()
 	end
+end
+
+-- Vuelve al asiento del propio gigante (botón «Volver» de la interfaz).
+function PlatformController.returnHome()
+	if ownGiant() then
+		sit()
+	end
+end
+
+-- UserId del dueño del gigante que pisa el jugador (nil si está en el suelo).
+function PlatformController.getAttachedTo(): number?
+	return attachedTo
+end
+
+function PlatformController.isSeated(): boolean
+	return seated
 end
 
 -- Para DriveController: solo se conduce sentado en el propio gigante.

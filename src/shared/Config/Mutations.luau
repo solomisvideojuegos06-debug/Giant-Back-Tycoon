@@ -1,8 +1,12 @@
 --!strict
--- Config/Mutations: mutaciones raras y su probabilidad.
--- Vacío en el hito M0; se rellena en el hito M7 con las cifras del GDD.
--- Todos los números de diseño viven aquí: nada de números mágicos en los services.
+-- Config/Mutations: probabilidad y lista de mutaciones raras (GDD, sección F).
+-- Los efectos de cada mutación están en Config/Traits.
 
-local Mutations = {}
+local Mutations = table.freeze({
+	chance = 0.05, -- por cría, sustituye a uno de los rasgos
+	list = table.freeze({ "Gigantism", "Glow", "DoubleStomach" }),
+	-- Rasgos normales que pueden tener los gigantes salvajes.
+	normalTraits = table.freeze({ "Shell", "ToughSkin", "WideFeet", "Trunk", "LongNeck", "Stride" }),
+})
 
-return table.freeze(Mutations)
+return Mutations

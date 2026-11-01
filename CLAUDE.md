@@ -3,7 +3,7 @@
 Juego de Roblox. El diseño completo está en docs/GDD.md; léelo antes de cada tarea.
 
 ## Cómo trabajamos
-- Implementa SOLO el hito que te pida (sección M del GDD). No adelantes hitos.
+- Todos los hitos del MVP (M0–M10) están implementados (ver docs/decisiones/proyecto-completo.md). Ahora se trabaja arreglando lo que el usuario reporte tras probar, sin añadir sistemas que no pida.
 - Al terminar un hito, enumera los criterios de aceptación y cómo comprobarlos en Studio.
 - Si una decisión del GDD no se puede implementar tal cual, para y explica el problema y las alternativas antes de cambiarla.
 
@@ -43,10 +43,13 @@ Juego de Roblox. El diseño completo está en docs/GDD.md; léelo antes de cada 
 - `rojo build -o dist/Server.rbxm builds/server.project.json` (igual con `shared` y `client`): actualizaciones.
 - `stylua --check src tests` y `selene src tests`: deben pasar sin errores antes de cada commit.
 - `lune run tests`: pruebas de las funciones puras (GiantMath, Formulas, Inheritance).
-- Wally (ProfileStore) se usará a partir del M5; si `wally install` no puede descargar, se copia el paquete a mano.
+- ProfileStore está incluido en src/server/vendor (licencia en licenses/); no hace falta Wally.
+- Comprobaciones extra sin Studio: rojo build + Lune (`@lune/roblox`) para revisar la place y las propiedades usadas.
 
 ## Notas de implementación
 - Los services y controllers se cargan solos desde su carpeta (src/shared/Bootstrap.luau): basta con añadir un ModuleScript con init() y start().
 - Los remotos se declaran solo en src/shared/Remotes.luau; el servidor los crea y el cliente los espera.
+- Arranque: los módulos pueden declarar `priority` (MapService 0, DataService 1, TelemetryService 2, GiantService 5; resto 10).
+- Estado del cliente: DataService.setView en el servidor → StateUpdate → src/client/ClientState.luau.
 - El gigante: estado lógico en GiantService, copia visual por cliente en GiantRenderController, plataforma móvil en PlatformController. Ver docs/decisiones/M1-plataforma.md.
 - Solo en Studio, comandos de chat de prueba: `/nivel N` cambia el nivel del gigante; `/pasear` lo hace caminar solo en círculos.

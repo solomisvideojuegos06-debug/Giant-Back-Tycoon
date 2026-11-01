@@ -1,7 +1,6 @@
 # M1 · Plataforma móvil o plan B
 
-**Estado:** plan A (plataforma móvil) implementado, **pendiente de probar en Studio**.
-La decisión final se apunta al final de este documento cuando se compruebe el M1.
+**Estado:** decidido. Plan A (plataforma móvil), comprobado en Studio el 1 de noviembre de 2026.
 
 ## Qué se ha implementado (plan A)
 
@@ -42,4 +41,5 @@ desde la interfaz. Se perdería caminar libremente por el lomo.
 
 ## Decisión
 
-_Pendiente de la prueba en Studio._
+**Plan A: plataforma móvil.** El usuario lo probó en Studio y funcionó todo: conducir, caminar por el lomo
+con el gigante en marcha, ver a otro jugador sobre su gigante y cambiar de nivel 1 a 10. El plan B no hace falta.

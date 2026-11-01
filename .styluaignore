@@ -1,3 +1,4 @@
 Packages/
 ServerPackages/
 DevPackages/
+src/server/vendor/

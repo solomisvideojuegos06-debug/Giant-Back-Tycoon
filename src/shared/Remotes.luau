@@ -71,8 +71,16 @@ local Remotes = {
 	SellFruit = func("SellFruit"), -- cantidad
 	RequestBreed = func("RequestBreed"), -- id del gigante pareja
 	RespondBreed = event("RespondBreed"), -- aceptar o rechazar
-	ContinueWithHatchling = func("ContinueWithHatchling"), -- confirmar retiro
+	ContinueWithHatchling = func("ContinueWithHatchling"), -- confirmar retiro (índice del huevo con Nido doble)
 	BoardGiant = func("BoardGiant"), -- subir como pasajero
+
+	-- Añadidos al GDD (ver docs/decisiones/proyecto-completo.md)
+	GetState = func("GetState"), -- estado completo al conectarse
+	EquipSkin = func("EquipSkin"), -- nombre de la piel o "" para quitarla
+	DebugGrant = func("DebugGrant"), -- solo Studio: conceder productos con id 0
+	Notify = event("Notify"), -- servidor → cliente: aviso breve en pantalla
+	BreedPrompt = event("BreedPrompt"), -- servidor → cliente: otro jugador quiere criar
+	FruitRain = event("FruitRain"), -- servidor → todos: lluvia de fruta (nombre, fin)
 
 	-- Cliente → servidor → otros clientes (no está en el GDD; ver docs/decisiones/M1-plataforma.md)
 	-- Posición del personaje relativa al gigante que pisa, para dibujar bien

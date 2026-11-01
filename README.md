@@ -45,7 +45,5 @@ assets                  → ReplicatedStorage.Assets              (modelos .rbxm
 
 ## Estado
 
-| Hito | Estado |
-| --- | --- |
-| M0. Proyecto base | Comprobado en Studio |
-| M1. El gigante que camina | Hecho, pendiente de comprobar en Studio |
+Todos los hitos del MVP (M0–M10) están implementados. M0 y M1 están comprobados en Studio; del M2 al M10
+falta probarlos. Detalle, decisiones y pendientes en [docs/decisiones/proyecto-completo.md](docs/decisiones/proyecto-completo.md).
