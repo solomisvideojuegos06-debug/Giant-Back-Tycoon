@@ -117,19 +117,33 @@ local Zones = table.freeze({
 	borderWidth = 30, -- ancho de la franja entre zonas
 	slowFactor = 0.55, -- velocidad en agua o espinos sin el rasgo adecuado
 
-	-- Punto de aparición y nodos concentrados alrededor (GDD, sección D).
-	spawnCenter = Vector3.new(-700, 0, 0),
-	spawnRadius = 90, -- los gigantes aparecen en un círculo
-	spawnClusterRadius = 230, -- parte de los nodos de la Pradera se concentran aquí
-	spawnClusterShare = 0.6,
+	-- Nodos concentrados junto al rancho (GDD, sección D: nada de caminar sin recompensa).
+	clusterCenter = Vector3.new(-760, 0, 0),
+	clusterRadius = 190,
+	clusterShare = 0.6, -- parte de los nodos de la Pradera que van aquí
 
-	-- Salón del Linaje (estatuas), cerca del punto de aparición.
-	hall = table.freeze({
-		origin = Vector3.new(-1060, 0, -270), -- esquina de la primera fila
-		rowSpacing = 100, -- una fila por jugador, a lo largo de Z
-		statueSpacing = 22, -- separación entre estatuas a lo largo de X
-		statuesPerRow = 6,
+	-- Suelo a cuadros (estilo bloques con studs).
+	tileSize = 50,
+
+	-- El rancho: una parcela por jugador en el lado oeste de la Pradera.
+	-- Cada parcela tiene valla, cartel, nido (casa del gigante), plataforma
+	-- para montar y las estatuas del Linaje.
+	ranch = table.freeze({
+		centerX = -1020, -- centro de las parcelas en X
+		firstZ = -400, -- centro de la primera parcela en Z
+		spacing = 160, -- distancia entre centros de parcela
+		count = 6,
+		size = 140, -- lado de la parcela
+		gateWidth = 60, -- hueco de la valla en el lado este
+		padOffset = Vector3.new(85, 0, -30), -- plataforma de montar (fuera, junto a la puerta)
+		spawnOffset = Vector3.new(90, 0, 10), -- donde aparece el jugador
+		statueX = -60, -- estatuas junto a la valla oeste (relativo al centro)
+		statueSpacing = 22,
+		statuesShown = 6,
 		statueScale = 0.45,
+		returnDelay = 12, -- s sin el dueño encima: el gigante vuelve a casa
+		returnTimeout = 45, -- s volviendo: si se atasca, aparece en casa
+		homeRadius = 12, -- a esta distancia ya está en casa
 	}),
 })
 

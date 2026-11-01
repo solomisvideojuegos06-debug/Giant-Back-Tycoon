@@ -39,6 +39,7 @@ local TelemetryService = require(script.Parent.TelemetryService)
 local MOVEMENT = GiantConfig.movement
 local NETWORK = GiantConfig.network
 local AUTOPILOT = Economy.autopilot
+local RANCH = Zones.ranch
 
 export type GiantState = {
 	id: number,
@@ -63,6 +64,9 @@ export type GiantState = {
 	waypointAt: number,
 	lastBlockedNotice: number,
 	debugWander: boolean,
+	homePosition: Vector3?, -- nido del rancho (solo gigantes de jugador)
+	homeYaw: number,
+	unattendedSince: number?, -- desde cuándo el dueño no va encima
 }
 
 export type TargetProvider = (state: GiantState) -> Vector3?
@@ -243,9 +247,10 @@ local function isNearSeat(state: GiantState): boolean
 	return (rootPart.Position - seatWorldPosition(state)).Magnitude <= tolerance
 end
 
-local function placeCharacterOnSeat(state: GiantState, character: Model)
-	local seatTop = seatWorldPosition(state) + Vector3.new(0, GiantConfig.platform.seatHeight, 0)
-	character:PivotTo(CFrame.new(seatTop) * CFrame.Angles(0, state.yaw, 0))
+-- El jugador aparece en su rancho, junto a la plataforma de montar, mirando al nido.
+local function placeCharacterAtRanch(state: GiantState, character: Model)
+	local spot = World.plotCenter(state.spawnSlot) + RANCH.spawnOffset + Vector3.new(0, 4, 0)
+	character:PivotTo(CFrame.new(spot) * CFrame.Angles(0, GiantMath.yawFromDirection(-1, 0), 0))
 end
 
 local function takeSpawnSlot(): number
@@ -258,12 +263,11 @@ local function takeSpawnSlot(): number
 	return 1
 end
 
+-- Casa del gigante: el nido de su parcela, mirando a la puerta (este).
 local function spawnPose(slot: number): (Vector3, number)
-	local angle = (slot - 1) / GiantConfig.spawn.slots * 2 * math.pi
-	local outward = Vector3.new(math.cos(angle), 0, math.sin(angle))
-	local spot = Zones.spawnCenter + outward * Zones.spawnRadius
+	local spot = World.plotCenter(slot)
 	local groundY = groundHeightAt(spot.X, spot.Z, spot.Y) or spot.Y
-	return Vector3.new(spot.X, groundY, spot.Z), GiantMath.yawFromDirection(outward.X, outward.Z)
+	return Vector3.new(spot.X, groundY, spot.Z), GiantMath.yawFromDirection(1, 0)
 end
 
 local function newState(id: number, player: Player?, position: Vector3, yaw: number): GiantState
@@ -300,6 +304,9 @@ local function newState(id: number, player: Player?, position: Vector3, yaw: num
 		waypointAt = 0,
 		lastBlockedNotice = 0,
 		debugWander = false,
+		homePosition = nil,
+		homeYaw = 0,
+		unattendedSince = nil,
 	}
 end
 
@@ -337,13 +344,15 @@ local function createPlayerGiant(player: Player)
 	local position, yaw = spawnPose(slot)
 	local state = newState(player.UserId, player, position, yaw)
 	state.spawnSlot = slot
+	state.homePosition = position
+	state.homeYaw = yaw
 	applyData(state, player)
 	register(state)
 
 	local function onCharacter(character: Model)
 		task.defer(function()
 			if giants[player.UserId] == state and character.Parent then
-				placeCharacterOnSeat(state, character)
+				placeCharacterAtRanch(state, character)
 			end
 		end)
 	end
@@ -449,11 +458,51 @@ local function randomWaypoint(state: GiantState): Vector3?
 	end
 	local margin = AUTOPILOT.zoneMargin
 	local rect = zone.rect
-	return Vector3.new(
-		random:NextNumber(rect.minX + margin, rect.maxX - margin),
-		0,
-		random:NextNumber(rect.minZ + margin, rect.maxZ - margin)
-	)
+	for _ = 1, 10 do
+		local point = Vector3.new(
+			random:NextNumber(rect.minX + margin, rect.maxX - margin),
+			0,
+			random:NextNumber(rect.minZ + margin, rect.maxZ - margin)
+		)
+		-- Ni los salvajes ni el piloto pasean por el rancho.
+		if not World.inRanch(point.X, point.Z) then
+			return point
+		end
+	end
+	return nil
+end
+
+-- Si el dueño no va encima, el gigante vuelve solo a su nido.
+-- Devuelve la dirección a seguir, o nil si no tiene que volver.
+local function homeDirection(state: GiantState, now: number, ownerAboard: boolean): Vector3?
+	local home = state.homePosition
+	if not home or ownerAboard then
+		state.unattendedSince = nil
+		return nil
+	end
+	local since = state.unattendedSince
+	if not since then
+		state.unattendedSince = now
+		return nil
+	end
+	local delta = Vector3.new(home.X - state.position.X, 0, home.Z - state.position.Z)
+	if now - since < RANCH.returnDelay then
+		return nil
+	end
+	if delta.Magnitude <= RANCH.homeRadius then
+		-- En casa: se queda quieto mirando a la puerta.
+		state.yaw = GiantMath.lerpAngle(state.yaw, state.homeYaw, 0.05)
+		return Vector3.zero
+	end
+	if now - since > RANCH.returnDelay + RANCH.returnTimeout then
+		-- Atascado: aparece directamente en casa.
+		state.position = home
+		state.yaw = state.homeYaw
+		state.speed = 0
+		state.unattendedSince = now - RANCH.returnDelay
+		return Vector3.zero
+	end
+	return delta.Unit
 end
 
 local function autopilotDirection(state: GiantState, now: number): Vector3
@@ -484,9 +533,18 @@ local function step(dt: number)
 		local input = if manual then state.input else Vector3.zero
 		local autopilotActive = false
 
+		local ownerAboard = state.player ~= nil and GiantService.getRiderGiant(state.id) == state.id
+		local goingHome = if state.player
+				and not manual
+				and not state.debugWander
+			then homeDirection(state, now, ownerAboard)
+			else nil
+
 		if state.debugWander then
 			local angle = now * GiantConfig.debug.wanderTurnRate
 			input = Vector3.new(math.cos(angle), 0, math.sin(angle))
+		elseif goingHome then
+			input = goingHome
 		elseif not manual and (state.wildZone or (state.autopilot and state.level >= AUTOPILOT.minLevel)) then
 			input = autopilotDirection(state, now)
 			autopilotActive = true

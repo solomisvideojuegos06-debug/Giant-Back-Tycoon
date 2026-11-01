@@ -47,3 +47,18 @@ y lo que queda pendiente. Todas las cifras siguen en `src/shared/Config`.
 - **Insignia de mutación:** crearla y poner su id en `Config/Economy.luau` (`breeding.mutationBadgeId`).
 - **Sonidos y arte final:** se usan sonidos internos de Roblox y modelos de bloques generados por código.
 - **Ajustar la curva** con jugadores reales (GDD, «Después del MVP»).
+
+## Versión 2 (tras la primera prueba del usuario)
+
+El usuario pidió mejor aspecto y un comienzo más claro:
+
+- **Rancho:** cada jugador tiene una parcela en el oeste de la Pradera, con valla, el cartel «Rancho de …», el nido
+  donde vive su gigante, una plataforma verde para montar y las estatuas de su Linaje (sustituye al Salón común).
+  El jugador ya no aparece sentado: aparece junto a su plataforma y una flecha le indica dónde montar.
+  Si el dueño no va encima durante 12 s, el gigante vuelve solo a su nido.
+- **Arte de bloques con studs** (referencia del usuario: un animal hecho de piezas): gigantes, árboles, rocas y máquinas
+  se generan con muchos cubos de varios tonos (`VoxelArt`), y el suelo es a cuadros con studs.
+- **Interfaz:** iconos nuevos con degradado, contorno y brillo; botones gruesos con sombra; contadores oscuros con
+  números blancos; ventanas con barra de título. Los botones aparecen cuando hacen falta (Construir con las primeras
+  monedas, Piloto en el nivel 3, Linaje y Libro en el nivel 10). Etiquetas sobre los gigantes con nombre, especie,
+  nivel y producción por segundo.

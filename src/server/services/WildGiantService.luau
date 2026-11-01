@@ -11,6 +11,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage.Shared
 local Economy = require(Shared.Config.Economy)
 local Mutations = require(Shared.Config.Mutations)
+local World = require(Shared.World)
 local Zones = require(Shared.Config.Zones)
 local GiantService = require(script.Parent.GiantService)
 
@@ -36,11 +37,18 @@ function WildGiantService.start()
 		for i = 1, Economy.wildGiantsPerZone do
 			local species = SPECIES_ORDER[(i - 1) % #SPECIES_ORDER + 1]
 			local rect = zone.rect
-			local position = Vector3.new(
-				random:NextNumber(rect.minX + MARGIN, rect.maxX - MARGIN),
-				0,
-				random:NextNumber(rect.minZ + MARGIN, rect.maxZ - MARGIN)
-			)
+			local position = Vector3.zero
+			for _ = 1, 20 do
+				position = Vector3.new(
+					random:NextNumber(rect.minX + MARGIN, rect.maxX - MARGIN),
+					0,
+					random:NextNumber(rect.minZ + MARGIN, rect.maxZ - MARGIN)
+				)
+				-- Lejos del rancho (y de sus estatuas).
+				if not World.inRanch(position.X - 120, position.Z) then
+					break
+				end
+			end
 			GiantService.createWild(nextId, species, randomTraits(), zone.id, position)
 			nextId -= 1
 		end

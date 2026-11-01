@@ -25,8 +25,12 @@ Juego de Roblox. El diseño completo está en docs/GDD.md; léelo antes de cada 
 - Interfaz de simulador cuidada con iconos propios; nunca emojis estándar en la interfaz.
 - Pensado primero para móvil: botones grandes, controles táctiles.
 
-## Modelos
-- Mientras no haya arte final, crea modelos de bloques simples por código o como .rbxm en assets/, con las mismas medidas y puntos de anclaje que tendrá el modelo final (huecos de máquina, asiento de la cabeza).
+## Modelos y arte
+- Estilo elegido por el usuario: bloques con studs y varios tonos (como un animal hecho de piezas).
+- Gigantes y nodos salen de src/shared/VoxelArt.luau (función pura). Config/Species lee de ahí las medidas (asiento, cubierta, huecos); no las dupliques.
+- GiantModel suelda todo a una raíz anclada (mover = un CFrame) y las patas van con Motor6D.
+- Iconos: src/client/ui/IconData.luau (capas con degradado y contorno), dibujados por Icons.luau.
+- Antes de entregar cambios visuales, renderiza una vista previa (Lune exporta VoxelArt/IconData a JSON y three.js/HTML en Chromium con Playwright) y revísala.
 
 ## Entrega al usuario (importante)
 - El usuario NO usa Rojo, Wally ni la terminal. Trabaja directamente en Roblox Studio.
@@ -53,3 +57,4 @@ Juego de Roblox. El diseño completo está en docs/GDD.md; léelo antes de cada 
 - Estado del cliente: DataService.setView en el servidor → StateUpdate → src/client/ClientState.luau.
 - El gigante: estado lógico en GiantService, copia visual por cliente en GiantRenderController, plataforma móvil en PlatformController. Ver docs/decisiones/M1-plataforma.md.
 - Solo en Studio, comandos de chat de prueba: `/nivel N` cambia el nivel del gigante; `/pasear` lo hace caminar solo en círculos.
+- Rancho (RanchService): el jugador aparece en su parcela y se monta en la plataforma verde; si el dueño no va encima, el gigante vuelve solo a su nido.

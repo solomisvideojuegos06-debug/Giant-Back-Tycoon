@@ -3,8 +3,9 @@
 	MapService
 	Construye el continente al arrancar el servidor a partir de Config/Zones:
 	suelo de cada zona, franjas entre zonas (río, dunas, ladera), agua poco
-	profunda, espinos, rocas grandes, carteles, el suelo del Salón del Linaje y
-	la iluminación. Se inicia antes que ningún otro service (priority = 0).
+	profunda, espinos, rocas grandes, carteles y
+	la iluminación. El rancho lo construye RanchService.
+	Se inicia antes que ningún otro service (priority = 0).
 
 	Solo el suelo (Workspace.Map, piezas con CanQuery) cuenta para la altura de
 	los gigantes; lo decorativo lleva CanQuery = false.
@@ -27,7 +28,6 @@ local THORN_GROUND = Color3.fromRGB(120, 80, 70)
 local THORN_COLOR = Color3.fromRGB(90, 40, 40)
 local ROCK_COLOR = Color3.fromRGB(120, 118, 125)
 local SIGN_POST = Color3.fromRGB(120, 80, 45)
-local HALL_FLOOR = Color3.fromRGB(205, 200, 185)
 
 local mapFolder: Folder
 local decorFolder: Folder
@@ -97,15 +97,32 @@ end
 local function buildZones()
 	local random = Random.new(7)
 	for index, zone in Zones.list do
-		local ground = part(
-			mapFolder,
-			`Ground_{zone.id}`,
-			rectSize(zone.rect, GROUND_THICKNESS),
-			CFrame.new(rectCenter(zone.rect, -GROUND_THICKNESS / 2)),
-			zone.groundColor,
-			zone.groundMaterial
-		)
-		ground:SetAttribute("Zone", zone.id)
+		-- Suelo a cuadros de dos tonos, con studs (cuenta para la altura de los gigantes).
+		local tile = Zones.tileSize
+		local h, sat, v = zone.groundColor:ToHSV()
+		local light = Color3.fromHSV(h, sat, math.min(v * 1.06, 1))
+		local dark = Color3.fromHSV(h, math.min(sat * 1.05, 1), v * 0.9)
+		local rect = zone.rect
+		local columns = math.ceil((rect.maxX - rect.minX) / tile)
+		local rows = math.ceil((rect.maxZ - rect.minZ) / tile)
+		for column = 0, columns - 1 do
+			for row = 0, rows - 1 do
+				local x0 = rect.minX + column * tile
+				local z0 = rect.minZ + row * tile
+				local w = math.min(tile, rect.maxX - x0)
+				local d = math.min(tile, rect.maxZ - z0)
+				local ground = part(
+					mapFolder,
+					"Ground",
+					Vector3.new(w, GROUND_THICKNESS, d),
+					CFrame.new(x0 + w / 2, -GROUND_THICKNESS / 2, z0 + d / 2),
+					if (column + row) % 2 == 0 then light else dark,
+					Enum.Material.Plastic
+				)
+				ground.TopSurface = Enum.SurfaceType.Studs
+				ground:SetAttribute("Zone", zone.id)
+			end
+		end
 
 		if index > 1 then
 			-- Franja entre zonas (decorativa) y carteles con el nivel necesario.
@@ -178,38 +195,18 @@ local function buildZones()
 	end
 end
 
-local function buildHall()
-	local hall = Zones.hall
-	local folder = Instance.new("Folder")
-	folder.Name = "Hall"
-	folder.Parent = Workspace
-	local width = hall.statueSpacing * (hall.statuesPerRow + 1)
-	local depth = hall.rowSpacing * 6
-	local floor = part(
-		folder,
-		"HallFloor",
-		Vector3.new(width, 0.6, depth),
-		CFrame.new(hall.origin.X + width / 2 - hall.statueSpacing, 0.3, hall.origin.Z + depth / 2 - hall.rowSpacing / 2),
-		HALL_FLOOR,
-		Enum.Material.Marble
-	)
-	floor.CanQuery = false
-	sign(
-		Vector3.new(hall.origin.X + width - hall.statueSpacing / 2, 0, hall.origin.Z - hall.rowSpacing / 2),
-		"Salón del Linaje",
-		"Tus generaciones"
-	)
-	local statues = Instance.new("Folder")
-	statues.Name = "Statues"
-	statues.Parent = folder
-end
-
 local function setupLighting()
-	Lighting.ClockTime = 13.5
-	Lighting.Brightness = 2.4
-	Lighting.Ambient = Color3.fromRGB(90, 90, 100)
-	Lighting.OutdoorAmbient = Color3.fromRGB(150, 150, 160)
+	Lighting.ClockTime = 14
+	Lighting.Brightness = 3
+	Lighting.Ambient = Color3.fromRGB(110, 110, 120)
+	Lighting.OutdoorAmbient = Color3.fromRGB(165, 165, 175)
 	Lighting.GlobalShadows = true
+	if not Lighting:FindFirstChildOfClass("ColorCorrectionEffect") then
+		local correction = Instance.new("ColorCorrectionEffect")
+		correction.Saturation = 0.2
+		correction.Contrast = 0.06
+		correction.Parent = Lighting
+	end
 	if not Lighting:FindFirstChildOfClass("Atmosphere") then
 		local atmosphere = Instance.new("Atmosphere")
 		atmosphere.Density = 0.22
@@ -221,7 +218,7 @@ end
 
 function MapService.init()
 	-- Si la place trae un mapa anterior (por ejemplo el de pruebas del M1), se sustituye.
-	for _, name in { "Map", "MapDecor", "Hall" } do
+	for _, name in { "Map", "MapDecor", "Hall", "Baseplate" } do
 		local old = Workspace:FindFirstChild(name)
 		if old then
 			old:Destroy()
@@ -236,7 +233,6 @@ function MapService.init()
 	decorFolder.Parent = Workspace
 
 	buildZones()
-	buildHall()
 	setupLighting()
 end
 

@@ -2,6 +2,7 @@
 --[[
 	TutorialController
 	Primeros 60 segundos (GDD, sección D), sin ventanas de texto:
+	0. Flecha que rebota sobre la plataforma «Montar» del rancho.
 	1. Indicación de movimiento: joystick en móvil, teclas WASD en ordenador.
 	2. Al tener monedas para la Trituradora, se resalta «Construir».
 	3. Con Fruta para crecer, se resalta «Alimentar».
@@ -12,6 +13,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage.Shared
 local Formulas = require(Shared.Formulas)
@@ -20,6 +22,7 @@ local ClientState = require(script.Parent.Parent.ClientState)
 local Theme = require(script.Parent.Parent.ui.Theme)
 local Widgets = require(script.Parent.Parent.ui.Widgets)
 local GiantRenderController = require(script.Parent.GiantRenderController)
+local PlatformController = require(script.Parent.PlatformController)
 local UIController = require(script.Parent.UIController)
 
 local TutorialController = {}
@@ -96,6 +99,40 @@ local function movementHint(gui: ScreenGui): Frame
 	return hint
 end
 
+-- Flecha 3D de bloques que rebota sobre un punto del mundo.
+local function worldArrow(position: Vector3): Model
+	local model = Instance.new("Model")
+	model.Name = "TutorialArrow"
+	local color = Color3.fromRGB(90, 255, 120)
+	local function piece(size: Vector3, offset: CFrame)
+		local part = Instance.new("Part")
+		part.Anchored = true
+		part.CanCollide = false
+		part.CanQuery = false
+		part.CanTouch = false
+		part.Material = Enum.Material.Neon
+		part.Color = color
+		part.Size = size
+		part.CFrame = CFrame.new(position) * offset
+		part.Parent = model
+	end
+	piece(Vector3.new(2.4, 6, 2.4), CFrame.new(0, 10, 0))
+	-- Punta escalonada hacia abajo (pirámide de bloques).
+	piece(Vector3.new(7, 1.4, 7), CFrame.new(0, 6.3, 0))
+	piece(Vector3.new(4.6, 1.4, 4.6), CFrame.new(0, 4.9, 0))
+	piece(Vector3.new(2.2, 1.4, 2.2), CFrame.new(0, 3.5, 0))
+	model.Parent = Workspace
+	local base = model:GetPivot()
+	task.spawn(function()
+		local t = 0
+		while model.Parent do
+			t += task.wait()
+			model:PivotTo(base * CFrame.new(0, math.abs(math.sin(t * 3)) * 3, 0) * CFrame.Angles(0, t * 2, 0))
+		end
+	end)
+	return model
+end
+
 function TutorialController.init() end
 
 function TutorialController.start()
@@ -111,6 +148,20 @@ function TutorialController.start()
 		while not gui do
 			task.wait(0.2)
 			gui = UIController.getGui()
+		end
+
+		-- 0. Montar en el gigante desde la plataforma del rancho.
+		local waited = 0
+		while not PlatformController.getPad() and waited < 15 do
+			waited += task.wait(0.2)
+		end
+		local pad = PlatformController.getPad()
+		if pad and not PlatformController.isSeated() then
+			local arrow = worldArrow(pad.Position + Vector3.new(0, 2, 0))
+			while not PlatformController.isSeated() do
+				task.wait(0.2)
+			end
+			arrow:Destroy()
 		end
 
 		-- 1. Mover el gigante.

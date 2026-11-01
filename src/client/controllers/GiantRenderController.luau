@@ -62,7 +62,7 @@ export type Giant = {
 	egg: BasePart?,
 	label: BillboardGui?,
 	growthFill: Frame?,
-	levelText: TextLabel?,
+	labelLines: { top: TextLabel, middle: TextLabel, bottom: TextLabel }?,
 	isWild: boolean,
 }
 
@@ -137,6 +137,11 @@ local function buildMachines(giant: Giant)
 			local built = MachineModel.build(machine.id)
 			built.model:ScaleTo(giant.scale)
 			built.model:PivotTo(slotCFrame(giant, slot))
+			local joint = Instance.new("Weld")
+			joint.Part0 = giant.built.root
+			joint.Part1 = built.root
+			joint.C0 = giant.built.root.CFrame:ToObjectSpace(built.root.CFrame)
+			joint.Parent = built.root
 			built.model.Parent = giant.built.model
 			table.insert(giant.machines, { model = built.model, slot = slot, animated = built.animated })
 		end
@@ -145,10 +150,8 @@ end
 
 local function animateMachines(giant: Giant, now: number)
 	for _, machine in giant.machines do
-		local base = slotCFrame(giant, machine.slot)
 		for _, item in machine.animated do
-			local relative = MachineModel.animate(item, now)
-			item.part.CFrame = base * CFrame.new(relative.Position * giant.scale) * relative.Rotation
+			item.motor.C0 = MachineModel.animate(item, now, giant.scale)
 		end
 	end
 end
@@ -171,33 +174,64 @@ local function updateEgg(giant: Giant)
 	egg.Size = Vector3.new(4, 4, 4) * giant.scale
 	egg.Color = species.eggColor
 	egg.Material = Enum.Material.SmoothPlastic
-	egg.Anchored = true
+	egg.Anchored = false
+	egg.Massless = true
 	egg.CanCollide = false
 	egg.CanQuery = false
 	egg.CanTouch = false
 	local last = giant.body.slots[#giant.body.slots] or Vector3.zero
 	egg.CFrame = giant.bodyCFrame * CFrame.new(Vector3.new(0, giant.body.deckTop + 2, last.Z + 2) * giant.scale)
+	local joint = Instance.new("Weld")
+	joint.Part0 = giant.built.root
+	joint.Part1 = egg
+	joint.C0 = giant.built.root.CFrame:ToObjectSpace(egg.CFrame)
+	joint.Parent = egg
 	egg.Parent = giant.built.model
 	giant.egg = egg
 end
 
 -- Etiquetas y barra de crecimiento -----------------------------------------
 
+local function outlinedText(parent: Instance, y: number, height: number, color: Color3): TextLabel
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Size = UDim2.new(1, 0, 0, height)
+	label.Position = UDim2.fromOffset(0, y)
+	label.Font = Theme.font
+	label.TextScaled = true
+	label.TextColor3 = color
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Theme.stroke
+	stroke.Thickness = 2.5
+	stroke.LineJoinMode = Enum.LineJoinMode.Round
+	stroke.Parent = label
+	label.Parent = parent
+	return label
+end
+
 local function updateLabel(giant: Giant)
-	if not giant.levelText then
+	local lines = giant.labelLines
+	if not lines then
 		return
 	end
 	local level = giant.root:GetAttribute("Level")
 	local name = stringAttribute(giant.root, "DisplayName")
+	local species = Species[stringAttribute(giant.root, "Species")]
+	local speciesName = if species then species.displayName else "Gigante"
 	if giant.isWild then
 		local names = {}
 		for _, trait in traitsOf(giant.root) do
 			local def = Traits[trait]
 			table.insert(names, if def then def.displayName else trait)
 		end
-		giant.levelText.Text = `{name}\n{table.concat(names, " · ")}`
+		lines.top.Text = "Salvaje · Adulto"
+		lines.middle.Text = speciesName
+		lines.bottom.Text = table.concat(names, " · ")
 	else
-		giant.levelText.Text = `{name} · Nv {level}`
+		local perSecond = giant.root:GetAttribute("PerSecond")
+		lines.top.Text = name
+		lines.middle.Text = `{speciesName} · Nv {level}`
+		lines.bottom.Text = if type(perSecond) == "number" and perSecond > 0 then `+{perSecond}/s` else ""
 	end
 end
 
@@ -215,45 +249,44 @@ local function buildLabel(giant: Giant)
 	if giant.label then
 		giant.label:Destroy()
 	end
-	local head = giant.built.headPart or giant.built.root
 	local isOwn = giant.userId == localPlayer.UserId
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "GiantLabel"
-	gui.Size = UDim2.fromOffset(220, if isOwn then 64 else 48)
-	gui.StudsOffsetWorldSpace = Vector3.new(0, head.Size.Y / 2 + 4, 0)
-	gui.MaxDistance = if isOwn then 1000 else 350
+	gui.Size = UDim2.fromOffset(260, if isOwn then 112 else 88)
+	gui.StudsOffsetWorldSpace = Vector3.new(0, 3, 0)
+	gui.MaxDistance = if isOwn then 1000 else 400
 	gui.LightInfluence = 0
-	gui.Parent = head
+	gui.Parent = giant.built.headPart
 
-	local text = Instance.new("TextLabel")
-	text.BackgroundTransparency = 1
-	text.Size = UDim2.new(1, 0, 0, if isOwn then 30 else 48)
-	text.Font = Theme.font
-	text.TextScaled = true
-	text.TextColor3 = if giant.isWild then Theme.gold else Theme.textLight
-	text.TextStrokeTransparency = 0.3
-	text.Parent = gui
-	giant.levelText = text
+	giant.labelLines = {
+		top = outlinedText(gui, 0, 24, if giant.isWild then Theme.gold else Color3.fromRGB(235, 235, 235)),
+		middle = outlinedText(gui, 24, 32, Theme.textLight),
+		bottom = outlinedText(gui, 56, 26, if giant.isWild then Color3.fromRGB(255, 235, 150) else Theme.moneyGreen),
+	}
 
 	if isOwn then
 		local bar = Instance.new("Frame")
-		bar.Size = UDim2.new(1, -20, 0, 20)
-		bar.Position = UDim2.new(0, 10, 0, 36)
-		bar.BackgroundColor3 = Color3.fromRGB(60, 40, 25)
+		bar.Size = UDim2.new(1, -40, 0, 18)
+		bar.Position = UDim2.new(0, 20, 0, 88)
+		bar.BackgroundColor3 = Color3.fromRGB(45, 32, 22)
 		bar.BorderSizePixel = 0
 		local corner = Instance.new("UICorner")
 		corner.CornerRadius = UDim.new(0.5, 0)
 		corner.Parent = bar
 		local stroke = Instance.new("UIStroke")
 		stroke.Color = Theme.stroke
-		stroke.Thickness = 2
+		stroke.Thickness = 2.5
 		stroke.Parent = bar
 		bar.Parent = gui
 
 		local fill = Instance.new("Frame")
-		fill.BackgroundColor3 = Theme.green
+		fill.BackgroundColor3 = Color3.new(1, 1, 1)
 		fill.BorderSizePixel = 0
 		fill.Size = UDim2.fromScale(0, 1)
+		local gradient = Instance.new("UIGradient")
+		gradient.Color = ColorSequence.new(Color3.fromRGB(150, 255, 120), Color3.fromRGB(50, 190, 70))
+		gradient.Rotation = 90
+		gradient.Parent = fill
 		local fillCorner = Instance.new("UICorner")
 		fillCorner.CornerRadius = UDim.new(0.5, 0)
 		fillCorner.Parent = fill
@@ -288,7 +321,7 @@ local function buildVisual(giant: Giant)
 	giant.body = Species[speciesName].body
 	giant.speciesName = speciesName
 	giant.growthFill = nil
-	giant.levelText = nil
+	giant.labelLines = nil
 	giant.label = nil
 	giant.egg = nil
 	giant.machines = {}
@@ -335,7 +368,7 @@ local function addGiant(instance: Instance)
 		egg = nil,
 		label = nil,
 		growthFill = nil,
-		levelText = nil,
+		labelLines = nil,
 		isWild = instance:GetAttribute("Wild") == true,
 	}
 	buildVisual(giant)
@@ -364,9 +397,11 @@ local function addGiant(instance: Instance)
 	instance:GetAttributeChangedSignal("Egg"):Connect(function()
 		updateEgg(giant)
 	end)
-	instance:GetAttributeChangedSignal("DisplayName"):Connect(function()
-		updateLabel(giant)
-	end)
+	for _, name in { "DisplayName", "PerSecond" } do
+		instance:GetAttributeChangedSignal(name):Connect(function()
+			updateLabel(giant)
+		end)
+	end
 
 	for _, listener in addedListeners do
 		task.spawn(listener, giant)
@@ -426,11 +461,9 @@ local function updateGiant(giant: Giant, renderTime: number, dt: number, now: nu
 		then CFrame.new(sample.x, sample.y, sample.z) * CFrame.Angles(0, sample.yaw, 0)
 		else giant.root.CFrame
 
-	local scaleChanged = false
 	if giant.scale ~= giant.targetScale then
 		giant.scale = GiantMath.moveToward(giant.scale, giant.targetScale, giant.scaleRate * dt)
 		model:ScaleTo(giant.scale)
-		scaleChanged = true
 	end
 	local scale = giant.scale
 
@@ -443,11 +476,14 @@ local function updateGiant(giant: Giant, renderTime: number, dt: number, now: nu
 
 	local bob = RENDER.bodyBob * scale * giant.walkAmount * math.abs(math.sin(giant.stepPhase * 2 * math.pi))
 	local bodyCFrame = cframe * CFrame.new(0, bob, 0)
-	model:PivotTo(bodyCFrame)
+	-- Todo va soldado a la raíz anclada: basta con mover la raíz.
+	giant.built.root.CFrame = bodyCFrame
 
+	-- Patas: se levantan y balancean; restan el rebote para seguir pisando el suelo.
 	for _, leg in giant.built.legs do
-		local lift = GiantMath.legLift(giant.stepPhase, leg.def.phase) * RENDER.legLift * scale * giant.walkAmount
-		leg.part.CFrame = cframe * CFrame.new(leg.def.position * scale + Vector3.new(0, lift, 0))
+		local lift = GiantMath.legLift(giant.stepPhase, leg.phase) * RENDER.legLift * scale * giant.walkAmount
+		local swing = math.sin((giant.stepPhase + leg.phase) * 2 * math.pi) * 0.35 * giant.walkAmount
+		leg.motor.C0 = CFrame.new(leg.hip * scale + Vector3.new(0, lift - bob, 0)) * CFrame.Angles(swing, 0, 0)
 	end
 
 	giant.cframe = cframe
@@ -461,10 +497,6 @@ local function updateGiant(giant: Giant, renderTime: number, dt: number, now: nu
 	end
 	if giant.machinesVisible then
 		animateMachines(giant, now)
-	end
-	if scaleChanged and giant.label then
-		local head = giant.built.headPart or giant.built.root
-		giant.label.StudsOffsetWorldSpace = Vector3.new(0, head.Size.Y / 2 + 4, 0)
 	end
 
 	for _, listener in moveListeners do

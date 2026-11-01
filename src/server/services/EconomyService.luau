@@ -117,7 +117,9 @@ local function pushMachines(player: Player, data: PlayerData)
 	DataService.setView(player, "machines", DataService.copy(data.giant.machines))
 	DataService.setView(player, "slots", EconomyService.slotCount(data))
 	DataService.setView(player, "capacity", EconomyService.capacity(data))
-	DataService.setView(player, "perSecond", EconomyService.potentialPerSecond(player, data))
+	local perSecond = EconomyService.potentialPerSecond(player, data)
+	DataService.setView(player, "perSecond", perSecond)
+	GiantService.setRootAttribute(player.UserId, "PerSecond", math.floor(perSecond))
 	GiantService.setMachinesAttribute(player.UserId, data.giant.machines)
 end
 
@@ -308,6 +310,7 @@ local function produce(player: Player, data: PlayerData)
 	if lastPerSecond[player] ~= perSecond then
 		lastPerSecond[player] = perSecond
 		DataService.setView(player, "perSecond", perSecond)
+		GiantService.setRootAttribute(player.UserId, "PerSecond", math.floor(perSecond))
 	end
 end
 

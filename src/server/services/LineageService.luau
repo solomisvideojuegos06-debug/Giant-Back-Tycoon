@@ -11,31 +11,28 @@
 	- Continuar con la cría: el adulto se retira como estatua; se pierden
 	  monedas, recursos, máquinas y nivel; se conservan Linaje, Libro, pieles
 	  y pases; la generación sube (+15 % monedas, +10 % alimento).
+	  Las estatuas se colocan en el rancho del jugador (RanchService).
 ]]
 
 local BadgeService = game:GetService("BadgeService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage.Shared
 local Economy = require(Shared.Config.Economy)
 local Formulas = require(Shared.Formulas)
-local GiantMath = require(Shared.GiantMath)
-local GiantModel = require(Shared.GiantModel)
 local Inheritance = require(Shared.Inheritance)
 local Machines = require(Shared.Config.Machines)
 local Mutations = require(Shared.Config.Mutations)
 local Remotes = require(Shared.Remotes)
-local Species = require(Shared.Config.Species)
 local Traits = require(Shared.Config.Traits)
 local Types = require(Shared.Types)
-local Zones = require(Shared.Config.Zones)
 local RateLimiter = require(script.Parent.Parent.RateLimiter)
 local DataService = require(script.Parent.DataService)
 local EconomyService = require(script.Parent.EconomyService)
 local GiantService = require(script.Parent.GiantService)
 local GrowthService = require(script.Parent.GrowthService)
+local RanchService = require(script.Parent.RanchService)
 local TelemetryService = require(script.Parent.TelemetryService)
 
 type PlayerData = Types.PlayerData
@@ -52,7 +49,6 @@ type PendingRequest = {
 
 local pending: { [Player]: PendingRequest } = {} -- clave: el que recibe la petición
 local announcedHatch: { [Player]: boolean } = {}
-local statueFolders: { [Player]: Folder } = {}
 local breedLimiter = RateLimiter.new(1, 3)
 local continueLimiter = RateLimiter.new(1, 2)
 local random = Random.new()
@@ -206,63 +202,6 @@ function LineageService.hatchNow(player: Player): boolean
 	return true
 end
 
--- Estatuas -------------------------------------------------------------------
-
-local function buildStatues(player: Player)
-	local data = DataService.get(player)
-	local state = GiantService.get(player.UserId)
-	local hall = Workspace:FindFirstChild("Hall")
-	local statues = hall and hall:FindFirstChild("Statues")
-	if not data or not state or not statues then
-		return
-	end
-	local old = statueFolders[player]
-	if old then
-		old:Destroy()
-	end
-	local folder = Instance.new("Folder")
-	folder.Name = tostring(player.UserId)
-	folder.Parent = statues
-	statueFolders[player] = folder
-
-	local config = Zones.hall
-	local row = math.max(state.spawnSlot, 1) - 1
-	local z = config.origin.Z + row * config.rowSpacing
-	local ancestors = data.lineage.ancestors
-	local first = math.max(#ancestors - config.statuesPerRow + 1, 1)
-	local facing = GiantMath.yawFromDirection(1, 0)
-
-	for index = first, #ancestors do
-		local ancestor = ancestors[index]
-		local slot = index - first
-		local built = GiantModel.build(ancestor.species, -index, { statue = true })
-		built.model:ScaleTo(config.statueScale)
-		built.model:PivotTo(
-			CFrame.new(config.origin.X + slot * config.statueSpacing, 0.6, z) * CFrame.Angles(0, facing, 0)
-		)
-		built.model.Name = `Gen{index}`
-
-		local gui = Instance.new("BillboardGui")
-		gui.Size = UDim2.fromOffset(160, 44)
-		gui.StudsOffsetWorldSpace = Vector3.new(0, 4, 0)
-		gui.MaxDistance = 250
-		gui.Parent = built.headPart or built.root
-		local label = Instance.new("TextLabel")
-		label.Size = UDim2.fromScale(1, 1)
-		label.BackgroundTransparency = 1
-		label.Font = Enum.Font.FredokaOne
-		label.TextScaled = true
-		label.TextColor3 = Color3.fromRGB(255, 255, 255)
-		label.TextStrokeTransparency = 0.4
-		local speciesDef = Species[ancestor.species]
-		label.Text =
-			`{player.DisplayName} · Gen {index}\n{if speciesDef then speciesDef.displayName else ancestor.species}`
-		label.Parent = gui
-
-		built.model.Parent = folder
-	end
-end
-
 -- Retiro y nueva generación ---------------------------------------------------
 
 local function onContinue(player: Player, eggIndex: unknown): (boolean, string?)
@@ -335,7 +274,7 @@ local function onContinue(player: Player, eggIndex: unknown): (boolean, string?)
 		end
 	end
 
-	buildStatues(player)
+	RanchService.refreshStatues(player)
 	return true, nil
 end
 
@@ -376,7 +315,7 @@ function LineageService.init()
 			task.wait(0.1)
 		end
 		updateEggAttribute(player, data)
-		buildStatues(player)
+		RanchService.refreshStatues(player)
 	end)
 	DataService.registerView(function(_player: Player, data: PlayerData)
 		return {
@@ -399,11 +338,6 @@ function LineageService.start()
 		announcedHatch[player] = nil
 		breedLimiter.forget(player.UserId)
 		continueLimiter.forget(player.UserId)
-		local folder = statueFolders[player]
-		if folder then
-			folder:Destroy()
-			statueFolders[player] = nil
-		end
 	end)
 	task.spawn(function()
 		while true do

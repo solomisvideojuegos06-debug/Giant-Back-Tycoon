@@ -35,6 +35,20 @@ function World.slowAreaAt(x: number, z: number): SlowArea?
 	return nil
 end
 
+-- Centro de la parcela del rancho número `slot` (1..count).
+function World.plotCenter(slot: number): Vector3
+	local ranch = Zones.ranch
+	return Vector3.new(ranch.centerX, 0, ranch.firstZ + (slot - 1) * ranch.spacing)
+end
+
+-- ¿Está (x, z) dentro de la zona del rancho (con su entrada)?
+function World.inRanch(x: number, z: number): boolean
+	local ranch = Zones.ranch
+	local half = ranch.size / 2
+	local lastZ = ranch.firstZ + (ranch.count - 1) * ranch.spacing
+	return x <= ranch.centerX + half + 30 and z >= ranch.firstZ - half - 10 and z <= lastZ + half + 10
+end
+
 function World.zoneIndex(zoneId: string): number
 	for index, zone in Zones.list do
 		if zone.id == zoneId then

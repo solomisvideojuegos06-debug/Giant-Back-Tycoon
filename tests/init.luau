@@ -5,6 +5,7 @@ local suites = {
 	require("@self/GiantMath.spec"),
 	require("@self/Formulas.spec"),
 	require("@self/Inheritance.spec"),
+	require("@self/VoxelArt.spec"),
 }
 
 local passed, failed = 0, 0

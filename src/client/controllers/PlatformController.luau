@@ -6,8 +6,9 @@
 	1. Plataforma móvil: si el personaje pisa un gigante, cada vez que el gigante
 	   se mueve se le aplica el mismo desplazamiento (y el mismo cambio de escala)
 	   antes de la física. Así puede caminar por el lomo sin caerse.
-	2. Asiento de la cabeza: al aparecer, el jugador se sienta en la cabeza de su
-	   gigante. Saltar le levanta; el aviso «Conducir» del asiento le vuelve a sentar.
+	2. Asiento de la cabeza: el jugador aparece en su rancho y se monta pisando
+	   la plataforma «Montar» (o con su aviso). Saltar le levanta; el aviso
+	   «Conducir» del asiento le vuelve a sentar.
 	3. Otros jugadores: cada cliente envía su posición relativa al gigante que pisa
 	   (RiderUpdate) y aquí se dibuja a los demás en esa posición sobre nuestra
 	   copia del gigante. Sin esto, por el retraso de red se les vería
@@ -315,7 +316,7 @@ local function onCharacterAdded(newCharacter: Model)
 	rootPart = part
 	seated = false
 	attachedTo = nil
-	pendingSeat = true -- el jugador aparece sentado en la cabeza (GDD, sección D)
+	pendingSeat = false -- aparece en su rancho; se monta en la plataforma
 
 	hum:GetPropertyChangedSignal("Sit"):Connect(function()
 		if humanoid == hum and seated and not hum.Sit then
@@ -342,7 +343,64 @@ local function onCharacterRemoving(oldCharacter: Model)
 	end
 end
 
--- Vuelve al asiento del propio gigante (botón «Volver» de la interfaz).
+-- Plataforma «Montar» del propio rancho: pisarla o usar su aviso sienta al jugador.
+local padPrompt: ProximityPrompt? = nil
+local padTouch: RBXScriptConnection? = nil
+
+local function bindPad(pad: BasePart)
+	if padPrompt then
+		padPrompt:Destroy()
+		padPrompt = nil
+	end
+	if padTouch then
+		padTouch:Disconnect()
+		padTouch = nil
+	end
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.ActionText = "Montar"
+	prompt.ObjectText = "Tu gigante"
+	prompt.KeyboardKeyCode = Enum.KeyCode.E
+	prompt.HoldDuration = 0
+	prompt.RequiresLineOfSight = false
+	prompt.MaxActivationDistance = 16
+	prompt.Parent = pad
+	prompt.Triggered:Connect(sit)
+	padPrompt = prompt
+	padTouch = pad.Touched:Connect(function(hit: BasePart)
+		local char = character
+		if char and hit:IsDescendantOf(char) and not seated then
+			sit()
+		end
+	end)
+end
+
+local function watchPads()
+	local ranch = Workspace:WaitForChild("Ranch")
+	local function check(pad: Instance)
+		if pad:IsA("BasePart") and pad.Name == "MountPad" then
+			local function update()
+				if pad:GetAttribute("OwnerUserId") == player.UserId then
+					bindPad(pad)
+				end
+			end
+			pad:GetAttributeChangedSignal("OwnerUserId"):Connect(update)
+			update()
+		end
+	end
+	ranch.DescendantAdded:Connect(check)
+	for _, descendant in ranch:GetDescendants() do
+		check(descendant)
+	end
+end
+
+-- Posición de la plataforma propia (para la flecha del tutorial).
+function PlatformController.getPad(): BasePart?
+	local prompt = padPrompt
+	local parent = prompt and prompt.Parent
+	return if parent and parent:IsA("BasePart") then parent else nil
+end
+
+-- Monta en el propio gigante desde cualquier sitio (botón «Montar» de la interfaz).
 function PlatformController.returnHome()
 	if ownGiant() then
 		sit()
@@ -385,6 +443,7 @@ function PlatformController.start()
 	RunService.PostSimulation:Connect(postSimulation)
 	RunService.PreRender:Connect(preRender)
 
+	task.spawn(watchPads)
 	player.CharacterAdded:Connect(onCharacterAdded)
 	player.CharacterRemoving:Connect(onCharacterRemoving)
 	if player.Character then

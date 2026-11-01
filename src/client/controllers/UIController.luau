@@ -173,9 +173,22 @@ local function window(name: string, title: string, size: Vector2): (Frame, Frame
 	closeWindow()
 	local frame = Widgets.panel(gui, UDim2.fromOffset(size.X, size.Y), UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
 	frame.ZIndex = 20
-	local header = Widgets.label(frame, title, 34)
-	header.Size = UDim2.new(1, -80, 0, 50)
-	header.Position = UDim2.fromOffset(20, 6)
+	-- Barra de título de color con el nombre en blanco.
+	local bar = Instance.new("Frame")
+	bar.BorderSizePixel = 0
+	bar.Size = UDim2.new(1, 0, 0, 58)
+	Widgets.gradient(bar, Widgets.lighten(Theme.orange, 0.15), Widgets.darken(Theme.orange, 0.1))
+	Widgets.corner(bar)
+	bar.Parent = frame
+	local barBottom = Instance.new("Frame")
+	barBottom.BorderSizePixel = 0
+	barBottom.Size = UDim2.new(1, 0, 0, 16)
+	barBottom.Position = UDim2.new(0, 0, 1, -16)
+	Widgets.gradient(barBottom, Widgets.darken(Theme.orange, 0.05), Widgets.darken(Theme.orange, 0.1))
+	barBottom.Parent = bar
+	local header = Widgets.title(bar, title, 34)
+	header.Size = UDim2.new(1, -80, 1, 0)
+	header.Position = UDim2.fromOffset(20, 0)
 	header.TextXAlignment = Enum.TextXAlignment.Left
 
 	local close = Widgets.button(frame, {
@@ -186,13 +199,18 @@ local function window(name: string, title: string, size: Vector2): (Frame, Frame
 		onClick = closeWindow,
 	})
 	close.instance.AnchorPoint = Vector2.new(1, 0)
-	close.instance.Position = UDim2.new(1, -10, 0, 8)
+	close.instance.Position = UDim2.new(1, -8, 0, 2)
 	close.label.Visible = false
+	local closeIcon = close.instance:FindFirstChild("Icon_close", true)
+	if closeIcon and closeIcon:IsA("GuiObject") then
+		closeIcon.AnchorPoint = Vector2.new(0.5, 0.5)
+		closeIcon.Position = UDim2.fromScale(0.5, 0.5)
+	end
 
 	local content = Instance.new("Frame")
 	content.BackgroundTransparency = 1
-	content.Size = UDim2.new(1, -30, 1, -76)
-	content.Position = UDim2.fromOffset(15, 64)
+	content.Size = UDim2.new(1, -30, 1, -82)
+	content.Position = UDim2.fromOffset(15, 70)
 	content.Parent = frame
 
 	openWindow = frame
@@ -715,19 +733,24 @@ local objectiveLabel: TextLabel
 local statusLabel: TextLabel
 local statusPanel: Frame
 
+-- Contador del HUD: píldora oscura con el icono asomando por la izquierda.
 local function pill(parent: Instance, icon: string, order: number): TextLabel
-	local frame = Widgets.panel(parent, UDim2.fromOffset(190, 50), UDim2.new())
-	frame.LayoutOrder = order
-	local iconFrame = Icons.make(icon, 38)
-	iconFrame.Position = UDim2.fromOffset(8, 6)
-	iconFrame.Parent = frame
-	local label = Widgets.label(frame, "0", 24)
-	label.Size = UDim2.new(1, -56, 1, 0)
-	label.Position = UDim2.fromOffset(52, 0)
+	local holder = Instance.new("Frame")
+	holder.BackgroundTransparency = 1
+	holder.Size = UDim2.fromOffset(168, 54)
+	holder.LayoutOrder = order
+	holder.Parent = parent
+	local frame = Widgets.darkPanel(holder, UDim2.new(1, -14, 0, 42), UDim2.new(0, 14, 0.5, 0), Vector2.new(0, 0.5))
+	local iconFrame = Icons.make(icon, 54)
+	iconFrame.Position = UDim2.fromOffset(-6, 0)
+	iconFrame.Parent = holder
+	local label = Widgets.title(frame, "0", 26)
+	label.Size = UDim2.new(1, -48, 1, 0)
+	label.Position = UDim2.fromOffset(42, 0)
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.TextScaled = true
 	local constraint = Instance.new("UITextSizeConstraint")
-	constraint.MaxTextSize = 24
+	constraint.MaxTextSize = 26
 	constraint.Parent = label
 	return label
 end
@@ -739,7 +762,7 @@ local function updateResources()
 		local value = number(key)
 		local label = resourceLabels[key]
 		label.Text = `{Widgets.formatNumber(value)}/{Widgets.formatNumber(capacity)}`
-		label.TextColor3 = if capacity > 0 and value >= capacity then Theme.red else Theme.text
+		label.TextColor3 = if capacity > 0 and value >= capacity then Theme.red else Theme.textLight
 	end
 	perSecondLabel.Text = `+{Widgets.formatNumber(number("perSecond"))}/s`
 end
@@ -747,6 +770,10 @@ end
 local function objectiveText(): string
 	local level = number("level")
 	local eggs = tableOf("eggs")
+	local onOwnGiant = PlatformController.isSeated() or PlatformController.getAttachedTo() == player.UserId
+	if not onOwnGiant and level <= 1 and number("coins") < 1 then
+		return "Pisa la plataforma verde para montar en tu gigante"
+	end
 	if level <= 1 and ownedCount("Crusher") == 0 then
 		local price = machinePrice("Crusher")
 		return if number("coins") >= price
@@ -798,8 +825,42 @@ local function updateStatus()
 	statusPanel.Visible = #parts > 0
 end
 
+-- Los botones aparecen cuando hacen falta, para no abrumar al empezar.
+local unlocked: { [string]: boolean } = {}
+local function reveal(key: string, condition: boolean)
+	if condition and not unlocked[key] then
+		unlocked[key] = true
+		local button = buttons[key]
+		if button then
+			button.instance.Visible = true
+			local scale = Instance.new("UIScale")
+			scale.Scale = 0.3
+			scale.Parent = button.instance
+			local tween = TweenService:Create(scale, TweenInfo.new(0.35, Enum.EasingStyle.Back), { Scale = 1 })
+			tween.Completed:Connect(function()
+				scale:Destroy()
+			end)
+			tween:Play()
+		end
+	end
+end
+
 local function updateButtons()
 	local level = number("level")
+	local generation = number("generation")
+	local veteran = level >= 2 or generation > 1
+	reveal("feed", veteran or number("fruit") >= 1)
+	reveal("sell", veteran or number("fruit") >= 1)
+	reveal("build", veteran or number("coins") >= 1)
+	reveal("pilot", level >= Economy.autopilot.minLevel)
+	reveal("lineage", level >= Economy.breeding.adultLevel or generation > 1 or #tableOf("eggs") > 0)
+	reveal("book", generation > 1 or level >= Economy.breeding.adultLevel)
+	for key in buttons do
+		if not unlocked[key] and key ~= "shop" and key ~= "home" and key ~= "breed" then
+			buttons[key].instance.Visible = false
+		end
+	end
+
 	local pilot = buttons.pilot
 	if level < Economy.autopilot.minLevel then
 		pilot.setText(`Nv {Economy.autopilot.minLevel}`)
@@ -828,7 +889,7 @@ local function buildHud()
 	resources.BackgroundTransparency = 1
 	resources.AnchorPoint = Vector2.new(1, 0)
 	resources.Position = UDim2.new(1, -12, 0, 8)
-	resources.Size = UDim2.fromOffset(790, 50)
+	resources.Size = UDim2.fromOffset(700, 54)
 	resources.Parent = gui
 	Widgets.list(resources, Enum.FillDirection.Horizontal, 8, Enum.HorizontalAlignment.Right)
 	resourceLabels.coins = pill(resources, "coin", 1)
@@ -836,23 +897,23 @@ local function buildHud()
 	resourceLabels.stone = pill(resources, "stone", 3)
 	resourceLabels.fruit = pill(resources, "fruit", 4)
 
-	perSecondLabel = Widgets.label(gui, "", 18, Theme.textLight)
-	perSecondLabel.AnchorPoint = Vector2.new(1, 0)
-	perSecondLabel.Position = UDim2.new(1, -620, 0, 60)
+	perSecondLabel = Widgets.label(gui, "", 20, Theme.moneyGreen)
+	perSecondLabel.AnchorPoint = Vector2.new(0, 0)
+	perSecondLabel.Position = UDim2.new(1, -670, 0, 62)
 	perSecondLabel.Size = UDim2.fromOffset(170, 24)
 	Widgets.outlined(perSecondLabel)
 
 	-- Objetivo (arriba a la izquierda).
-	local objective = Widgets.panel(gui, UDim2.fromOffset(470, 56), UDim2.fromOffset(12, 8))
-	local target = Icons.make("egg", 40)
+	local objective = Widgets.panel(gui, UDim2.fromOffset(400, 56), UDim2.fromOffset(12, 8))
+	local target = Icons.make("target", 40)
 	target.Position = UDim2.fromOffset(8, 8)
 	target.Parent = objective
-	objectiveLabel = Widgets.label(objective, "", 20)
+	objectiveLabel = Widgets.label(objective, "", 18)
 	objectiveLabel.Size = UDim2.new(1, -62, 1, 0)
 	objectiveLabel.Position = UDim2.fromOffset(56, 0)
 	objectiveLabel.TextXAlignment = Enum.TextXAlignment.Left
 
-	statusPanel = Widgets.panel(gui, UDim2.fromOffset(470, 36), UDim2.fromOffset(12, 70), nil, Theme.panelDark)
+	statusPanel = Widgets.panel(gui, UDim2.fromOffset(400, 36), UDim2.fromOffset(12, 70), nil, Theme.panelDark)
 	statusLabel = Widgets.label(statusPanel, "", 16, Theme.text, Theme.fontBody)
 	statusLabel.Size = UDim2.new(1, -16, 1, 0)
 	statusLabel.Position = UDim2.fromOffset(8, 0)
@@ -957,7 +1018,7 @@ local function buildHud()
 	menuButton("book", "Libro", "book", Theme.purple, 2, toggle("book", openBook))
 	menuButton("shop", "Tienda", "shop", Theme.green, 3, toggle("shop", openShop))
 	menuButton("breed", "Criar", "heart", Theme.red, 4, requestBreed)
-	menuButton("home", "Volver", "home", Theme.orange, 5, function()
+	menuButton("home", "Montar", "paw", Theme.green, 5, function()
 		PlatformController.returnHome()
 	end)
 
@@ -983,11 +1044,11 @@ local function coinPopups()
 			local amount = pendingCoins
 			pendingCoins = 0
 			local label = Widgets.label(gui, `+{Widgets.formatNumber(amount)}`, 26, Theme.gold)
-			label.AnchorPoint = Vector2.new(1, 0)
-			label.Position = UDim2.new(1, -640, 0, 14)
+			label.Position = UDim2.new(1, -600, 0, 66)
 			label.Size = UDim2.fromOffset(150, 30)
 			Widgets.outlined(label)
-			TweenService:Create(label, TweenInfo.new(1), { Position = UDim2.new(1, -640, 0, 54), TextTransparency = 1 })
+			TweenService
+				:Create(label, TweenInfo.new(1), { Position = UDim2.new(1, -600, 0, 106), TextTransparency = 1 })
 				:Play()
 			task.delay(1.1, function()
 				label:Destroy()

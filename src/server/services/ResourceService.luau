@@ -22,6 +22,7 @@ local Shared = ReplicatedStorage.Shared
 local Economy = require(Shared.Config.Economy)
 local Nodes = require(Shared.Config.Nodes)
 local Remotes = require(Shared.Remotes)
+local VoxelArt = require(Shared.VoxelArt)
 local World = require(Shared.World)
 local Zones = require(Shared.Config.Zones)
 local DataService = require(script.Parent.DataService)
@@ -85,105 +86,33 @@ local function flatDistance(a: Vector3, b: Vector3): number
 	return Vector3.new(a.X - b.X, 0, a.Z - b.Z).Magnitude
 end
 
--- Modelos de bloques de los nodos ---------------------------------------------
-
-local function nodePart(model: Model, size: Vector3, cframe: CFrame, color: Color3, shape: Enum.PartType?): Part
-	local part = Instance.new("Part")
-	part.Anchored = true
-	part.CanCollide = false
-	part.CanQuery = false
-	part.CanTouch = false
-	part.Size = size
-	part.CFrame = cframe
-	part.Color = color
-	part.Material = Enum.Material.Plastic
-	part.TopSurface = Enum.SurfaceType.Smooth
-	part.BottomSurface = Enum.SurfaceType.Smooth
-	if shape then
-		part.Shape = shape
-	end
-	part.Parent = model
-	return part
-end
+-- Modelos de bloques de los nodos (arte en VoxelArt) ----------------------------
 
 local function buildNodeModel(nodeType: string, base: CFrame, random: Random): Model
 	local model = Instance.new("Model")
 	model.Name = nodeType
-	local s = random:NextNumber(0.9, 1.2)
-	local function at(x: number, y: number, z: number): CFrame
-		return base * CFrame.new(x * s, y * s, z * s)
-	end
-
-	if nodeType == "Tree" then
-		nodePart(model, Vector3.new(1.6, 6, 1.6) * s, at(0, 3, 0), Color3.fromRGB(130, 85, 45))
-		nodePart(model, Vector3.new(6, 5, 6) * s, at(0, 8.5, 0), Color3.fromRGB(60, 170, 60))
-	elseif nodeType == "Palm" then
-		nodePart(model, Vector3.new(1.2, 9, 1.2) * s, at(0, 4.5, 0), Color3.fromRGB(190, 150, 90))
-		nodePart(model, Vector3.new(7, 1, 2) * s, at(0, 9.3, 0), Color3.fromRGB(70, 180, 70))
-		nodePart(model, Vector3.new(2, 1, 7) * s, at(0, 9.3, 0), Color3.fromRGB(70, 180, 70))
-		nodePart(model, Vector3.new(1, 1, 1) * s, at(0.6, 8.5, 0.6), Color3.fromRGB(120, 80, 40), Enum.PartType.Ball)
-	elseif nodeType == "Rock" then
-		nodePart(
-			model,
-			Vector3.new(4, 3, 3.5) * s,
-			at(0, 1.5, 0) * CFrame.Angles(0, 0.5, 0.1),
-			Color3.fromRGB(140, 140, 150)
-		)
-		nodePart(model, Vector3.new(2, 1.5, 2) * s, at(2, 0.75, 1), Color3.fromRGB(120, 120, 130))
-	elseif nodeType == "Coral" then
-		nodePart(model, Vector3.new(1.5, 4, 1.5) * s, at(0, 2, 0), Color3.fromRGB(255, 110, 150))
-		nodePart(
-			model,
-			Vector3.new(1, 3, 1) * s,
-			at(1.2, 1.5, 0.4) * CFrame.Angles(0, 0, -0.4),
-			Color3.fromRGB(255, 170, 80)
-		)
-		nodePart(
-			model,
-			Vector3.new(1.2, 2.5, 1.2) * s,
-			at(-1, 1.25, -0.6) * CFrame.Angles(0.3, 0, 0.3),
-			Color3.fromRGB(255, 140, 200)
-		)
-	elseif nodeType == "Crystal" then
-		local a = nodePart(
-			model,
-			Vector3.new(1.6, 5, 1.6) * s,
-			at(0, 2.5, 0) * CFrame.Angles(0, 0, 0.25),
-			Color3.fromRGB(110, 230, 255)
-		)
-		a.Material = Enum.Material.Neon
-		local b = nodePart(
-			model,
-			Vector3.new(1, 3, 1) * s,
-			at(1.3, 1.5, 0.5) * CFrame.Angles(0.3, 0, -0.3),
-			Color3.fromRGB(180, 120, 255)
-		)
-		b.Material = Enum.Material.Neon
-	elseif nodeType == "Bush" then
-		nodePart(model, Vector3.new(4, 4, 4) * s, at(0, 1.6, 0), Color3.fromRGB(50, 160, 70), Enum.PartType.Ball)
-		for i = 1, 3 do
-			local angle = i * 2.1
-			nodePart(
-				model,
-				Vector3.new(0.9, 0.9, 0.9) * s,
-				at(math.cos(angle) * 1.7, 2.4, math.sin(angle) * 1.7),
-				Color3.fromRGB(230, 40, 60),
-				Enum.PartType.Ball
-			)
+	local s = random:NextNumber(0.95, 1.3)
+	for _, item in VoxelArt.node(nodeType, random:NextNumber()) do
+		local part = Instance.new("Part")
+		part.Anchored = true
+		part.CanCollide = false
+		part.CanQuery = false
+		part.CanTouch = false
+		part.Size = Vector3.new(item.sx, item.sy, item.sz) * s
+		local cframe = base * CFrame.new(item.x * s, item.y * s, item.z * s)
+		if item.rot then
+			cframe *= CFrame.fromEulerAnglesYXZ(math.rad(item.rot[1]), math.rad(item.rot[2]), math.rad(item.rot[3]))
 		end
-	elseif nodeType == "TallFruitTree" then
-		nodePart(model, Vector3.new(2, 22, 2) * s, at(0, 11, 0), Color3.fromRGB(120, 80, 40))
-		nodePart(model, Vector3.new(9, 5, 9) * s, at(0, 24, 0), Color3.fromRGB(40, 130, 50))
-		for i = 1, 4 do
-			local angle = i * math.pi / 2
-			nodePart(
-				model,
-				Vector3.new(1.4, 1.4, 1.4) * s,
-				at(math.cos(angle) * 3.5, 21.8, math.sin(angle) * 3.5),
-				Color3.fromRGB(255, 150, 30),
-				Enum.PartType.Ball
-			)
-		end
+		part.CFrame = cframe
+		part.Color = Color3.fromRGB(item.color[1], item.color[2], item.color[3])
+		part.Material = if nodeType == "Crystal" and item.y > 1 then Enum.Material.Neon else Enum.Material.Plastic
+		part.TopSurface = Enum.SurfaceType.Studs
+		part.FrontSurface = Enum.SurfaceType.Studs
+		part.BackSurface = Enum.SurfaceType.Studs
+		part.LeftSurface = Enum.SurfaceType.Studs
+		part.RightSurface = Enum.SurfaceType.Studs
+		part.BottomSurface = Enum.SurfaceType.Inlet
+		part.Parent = model
 	end
 	model.WorldPivot = base
 	return model
@@ -207,13 +136,6 @@ local function tooClose(x: number, z: number): boolean
 		end
 	end)
 	return found
-end
-
-local function inHall(x: number, z: number): boolean
-	local hall = Zones.hall
-	return x < hall.origin.X + hall.statueSpacing * (hall.statuesPerRow + 1)
-		and z > hall.origin.Z - hall.rowSpacing
-		and z < hall.origin.Z + hall.rowSpacing * 6
 end
 
 local function addNode(nodeType: string, zone: Zones.ZoneDef, x: number, z: number, random: Random)
@@ -259,20 +181,20 @@ local function generate()
 	for _, zone in Zones.list do
 		local rect = zone.rect
 		for _, spawn in zone.nodes do
-			local clustered = if zone.id == "Meadow" then math.floor(spawn.count * Zones.spawnClusterShare) else 0
+			local clustered = if zone.id == "Meadow" then math.floor(spawn.count * Zones.clusterShare) else 0
 			for i = 1, spawn.count do
 				for _ = 1, 12 do
 					local x, z
 					if i <= clustered then
 						local angle = random:NextNumber(0, math.pi * 2)
-						local distance = math.sqrt(random:NextNumber()) * Zones.spawnClusterRadius
-						x = Zones.spawnCenter.X + math.cos(angle) * distance
-						z = Zones.spawnCenter.Z + math.sin(angle) * distance
+						local distance = math.sqrt(random:NextNumber()) * Zones.clusterRadius
+						x = Zones.clusterCenter.X + math.cos(angle) * distance
+						z = Zones.clusterCenter.Z + math.sin(angle) * distance
 					else
 						x = random:NextNumber(rect.minX + margin, rect.maxX - margin)
 						z = random:NextNumber(rect.minZ + margin, rect.maxZ - margin)
 					end
-					if World.inRect(rect, x, z) and not tooClose(x, z) and not inHall(x, z) then
+					if World.inRect(rect, x, z) and not tooClose(x, z) and not World.inRanch(x, z) then
 						addNode(spawn.nodeType, zone, x, z, random)
 						break
 					end
