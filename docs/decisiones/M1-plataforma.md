@@ -30,7 +30,8 @@ Ninguno cambia una decisión del GDD; los dos hacen falta para que el plan A fun
 ## Qué hay que probar
 
 - Dirigir con WASD y con el joystick del emulador de móvil.
-- Bajarse del asiento (saltar), caminar por el lomo con el gigante en marcha: sin caerse ni temblar.
+- Escribir `/pasear` en el chat (el gigante camina solo), bajarse del asiento (saltar) y caminar por el lomo
+  con el gigante en marcha: sin caerse ni temblar.
 - Con 2 jugadores: cada uno ve al otro bien colocado sobre su gigante, también en marcha.
 - `/nivel 1` … `/nivel 10` en el chat: el gigante crece o encoge en 1 s y quien está encima sigue encima.
 

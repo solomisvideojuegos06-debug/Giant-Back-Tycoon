@@ -66,6 +66,8 @@ local Giant = table.freeze({
 
 	debug = table.freeze({
 		levelCommand = "/nivel", -- solo en Studio: «/nivel 7»
+		wanderCommand = "/pasear", -- solo en Studio: el gigante camina en círculos solo
+		wanderTurnRate = 0.15, -- rad/s que gira la dirección del paseo de prueba
 	}),
 })
 

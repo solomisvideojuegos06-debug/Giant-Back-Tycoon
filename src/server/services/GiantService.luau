@@ -13,7 +13,8 @@
 	  instantáneas con la hora del servidor (GiantSnapshot) para que los
 	  clientes interpolen sin tirones.
 	- Reenvía RiderUpdate (posición de cada jugador relativa a un gigante).
-	- Solo en Studio: comando de chat «/nivel N» para probar las escalas.
+	- Solo en Studio: comandos de chat «/nivel N» (probar las escalas) y
+	  «/pasear» (el gigante camina solo, para probar a caminar por el lomo).
 ]]
 
 local Players = game:GetService("Players")
@@ -47,6 +48,7 @@ type GiantState = {
 	input: Vector3, -- dirección deseada en el mundo (x, 0, z), magnitud 0..1
 	inputAt: number,
 	spawnSlot: number,
+	debugWander: boolean, -- solo Studio: camina solo en círculos (/pasear)
 }
 
 local GiantService = {}
@@ -198,6 +200,7 @@ local function createGiant(player: Player)
 		input = Vector3.zero,
 		inputAt = 0,
 		spawnSlot = slot,
+		debugWander = false,
 	}
 	giants[player.UserId] = state
 
@@ -284,6 +287,10 @@ local function step(dt: number)
 
 	for _, state in giants do
 		local input = if now - state.inputAt <= MOVEMENT.inputTimeout then state.input else Vector3.zero
+		if state.debugWander then
+			local angle = now * GiantConfig.debug.wanderTurnRate
+			input = Vector3.new(math.cos(angle), 0, math.sin(angle))
+		end
 		state.yaw, state.speed = GiantMath.steer(state.yaw, state.speed, input.X, input.Z, dt, {
 			maxSpeed = maxSpeed(state),
 			acceleration = MOVEMENT.acceleration * state.scale,
@@ -340,6 +347,23 @@ local function setupDebugCommand()
 		if state and level then
 			applyLevel(state, level)
 			print(`[GiantService] {state.player.Name}: nivel {state.level} (escala {state.scale})`)
+		end
+	end)
+
+	local wander = Instance.new("TextChatCommand")
+	wander.Name = "GiantWanderCommand"
+	wander.PrimaryAlias = GiantConfig.debug.wanderCommand
+	wander.Parent = TextChatService
+	wander.Triggered:Connect(function(source: TextSource)
+		local player = Players:GetPlayerByUserId(source.UserId)
+		local state = player and giants[player.UserId]
+		if state then
+			state.debugWander = not state.debugWander
+			print(
+				`[GiantService] {state.player.Name}: paseo de prueba {if state.debugWander
+					then "activado"
+					else "desactivado"}`
+			)
 		end
 	end)
 end

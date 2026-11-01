@@ -49,4 +49,4 @@ Juego de Roblox. El diseño completo está en docs/GDD.md; léelo antes de cada 
 - Los services y controllers se cargan solos desde su carpeta (src/shared/Bootstrap.luau): basta con añadir un ModuleScript con init() y start().
 - Los remotos se declaran solo en src/shared/Remotes.luau; el servidor los crea y el cliente los espera.
 - El gigante: estado lógico en GiantService, copia visual por cliente en GiantRenderController, plataforma móvil en PlatformController. Ver docs/decisiones/M1-plataforma.md.
-- En Studio, el comando de chat `/nivel N` cambia el nivel del gigante (solo para pruebas).
+- Solo en Studio, comandos de chat de prueba: `/nivel N` cambia el nivel del gigante; `/pasear` lo hace caminar solo en círculos.
